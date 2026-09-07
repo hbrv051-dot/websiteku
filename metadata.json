@@ -1,0 +1,6 @@
+{
+  "name": "My Website",
+  "description": "Pusat penyimpanan, manajemen, dan akses seluruh website serta database dalam satu aplikasi modern dengan thumbnail preview visual.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
