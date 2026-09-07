@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, Plus, X, Globe } from 'lucide-react';
+import { Menu, Search, Plus, X, Globe, Database } from 'lucide-react';
 import { NavigationTab, AppBrandingSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
 
@@ -8,6 +8,12 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onOpenAddModal: () => void;
+  onOpenSupabaseModal?: () => void;
+  supabaseStatus?: {
+    isConnected: boolean;
+    tableExists: boolean;
+    latencyMs?: number;
+  };
   currentTab: NavigationTab;
   totalResults?: number;
   totalDatabases: number;
@@ -21,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   onOpenAddModal,
+  onOpenSupabaseModal,
+  supabaseStatus,
   currentTab,
   totalResults,
   totalDatabases,
@@ -83,8 +91,50 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Add Website Button + Admin Avatar */}
+        {/* Right Section: Supabase Status + Add Website Button + Admin Avatar */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Supabase Status Pill */}
+          {onOpenSupabaseModal && (
+            <button
+              id="header-supabase-btn"
+              onClick={onOpenSupabaseModal}
+              title="Kelola Koneksi Supabase & Salin SQL Schema"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-sm"
+              style={{
+                backgroundColor:
+                  supabaseStatus?.isConnected && supabaseStatus?.tableExists
+                    ? '#ecfdf5'
+                    : supabaseStatus?.isConnected
+                    ? '#fefce8'
+                    : '#f8fafc',
+                borderColor:
+                  supabaseStatus?.isConnected && supabaseStatus?.tableExists
+                    ? '#6ee7b7'
+                    : supabaseStatus?.isConnected
+                    ? '#fde047'
+                    : '#cbd5e1',
+                color:
+                  supabaseStatus?.isConnected && supabaseStatus?.tableExists
+                    ? '#047857'
+                    : supabaseStatus?.isConnected
+                    ? '#a16207'
+                    : '#475569',
+              }}
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Supabase</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  supabaseStatus?.isConnected && supabaseStatus?.tableExists
+                    ? 'bg-emerald-500 animate-pulse'
+                    : supabaseStatus?.isConnected
+                    ? 'bg-amber-500'
+                    : 'bg-slate-400'
+                }`}
+              />
+            </button>
+          )}
+
           <button
             id="add-website-button"
             onClick={onOpenAddModal}
@@ -94,6 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden xs:inline sm:inline">+ Tambah Website</span>
             <span className="xs:hidden sm:hidden">Tambah</span>
           </button>
+
 
           {/* Quick Admin Profile Badge */}
           <div className="hidden md:flex items-center gap-2.5 pl-2 border-l border-slate-200">

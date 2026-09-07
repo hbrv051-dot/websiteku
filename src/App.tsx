@@ -48,12 +48,37 @@ import { AboutView } from './views/AboutView';
 import { showToast, showConfirmDialog } from './utils/alerts';
 import { checkWebsitePing, checkAllWebsitesPing } from './utils/ping';
 import { openMiniKioskPopup } from './utils/helpers';
+import { SupabaseModal } from './components/SupabaseModal';
+import {
+  testSupabaseConnection,
+  fetchWebsitesFromSupabase,
+  upsertWebsiteToSupabase,
+  deleteWebsiteFromSupabase,
+  syncAllWebsitesToSupabase,
+  fetchAccessLogsFromSupabase,
+  addAccessLogToSupabase,
+  subscribeToWebsitesRealtime,
+} from './utils/supabase';
 
 export default function App() {
   // State: Data
   const [websites, setWebsites] = useState<WebsiteItem[]>(() => loadWebsitesFromStorage());
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>(() => loadAccessLogsFromStorage());
   const [isCheckingAllPing, setIsCheckingAllPing] = useState(false);
+
+  // State: Supabase Integration
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    isConnected: boolean;
+    tableExists: boolean;
+    message: string;
+    latencyMs?: number;
+    count?: number;
+  }>({
+    isConnected: false,
+    tableExists: false,
+    message: 'Memeriksa koneksi Supabase...',
+  });
 
   // State: Custom Branding & Audio Settings
   const [branding, setBranding] = useState<AppBrandingSettings>(() => loadBrandingSettings());
@@ -102,6 +127,109 @@ export default function App() {
     saveAudioSettings(audioSettings);
   }, [audioSettings]);
 
+  // Supabase Initial Connection Check & Real-time Synchronization
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkSupabase = async () => {
+      const status = await testSupabaseConnection();
+      if (!isMounted) return;
+      setSupabaseStatus({
+        isConnected: status.success,
+        tableExists: status.tableExists,
+        message: status.message,
+        latencyMs: status.latencyMs,
+        count: status.count,
+      });
+
+      if (status.success && status.tableExists) {
+        // Fetch websites from Supabase
+        const { data, error } = await fetchWebsitesFromSupabase();
+        if (!error && data && data.length > 0) {
+          setWebsites(data);
+          saveWebsitesToStorage(data);
+        } else if (data && data.length === 0) {
+          // Table exists in Supabase but is empty, push initial local data
+          const currentLocal = loadWebsitesFromStorage();
+          if (currentLocal.length > 0) {
+            syncAllWebsitesToSupabase(currentLocal);
+          }
+        }
+
+        const { data: logsData } = await fetchAccessLogsFromSupabase();
+        if (logsData && logsData.length > 0) {
+          setAccessLogs(logsData);
+        }
+      }
+    };
+
+    checkSupabase();
+
+    // Listen to real-time changes
+    const unsubscribe = subscribeToWebsitesRealtime(
+      (newWebsite) => {
+        setWebsites((prev) => {
+          if (prev.some((w) => w.id === newWebsite.id)) {
+            return prev.map((w) => (w.id === newWebsite.id ? newWebsite : w));
+          }
+          return [newWebsite, ...prev];
+        });
+      },
+      (updatedWebsite) => {
+        setWebsites((prev) =>
+          prev.map((w) => (w.id === updatedWebsite.id ? updatedWebsite : w))
+        );
+      },
+      (deletedId) => {
+        setWebsites((prev) => prev.filter((w) => w.id !== deletedId));
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const handleRefreshSupabaseStatus = async () => {
+    const status = await testSupabaseConnection();
+    setSupabaseStatus({
+      isConnected: status.success,
+      tableExists: status.tableExists,
+      message: status.message,
+      latencyMs: status.latencyMs,
+      count: status.count,
+    });
+    if (status.success && status.tableExists) {
+      showToast(`Terhubung ke Supabase! Latensi: ${status.latencyMs ?? 0}ms`, 'success');
+    } else if (status.success && !status.tableExists) {
+      showToast('Terhubung ke Supabase, namun tabel belum dibuat. Buka tab Kode SQL!', 'warning');
+    } else {
+      showToast('Koneksi Supabase: ' + status.message, 'error');
+    }
+  };
+
+  const handleSyncAllToSupabase = async () => {
+    const res = await syncAllWebsitesToSupabase(websites);
+    if (res.success) {
+      showToast(`Berhasil upload ${res.count} website ke Supabase!`, 'success');
+      handleRefreshSupabaseStatus();
+    } else {
+      showToast(`Gagal upload ke Supabase: ${res.error}`, 'error');
+    }
+  };
+
+  const handleFetchAllFromSupabase = async () => {
+    const { data, error } = await fetchWebsitesFromSupabase();
+    if (!error && data) {
+      setWebsites(data);
+      showToast(`Berhasil mengambil ${data.length} website dari Supabase!`, 'success');
+      handleRefreshSupabaseStatus();
+    } else {
+      showToast(`Gagal mengambil data dari Supabase: ${error}`, 'error');
+    }
+  };
+
   // Handler: Open Website (Supports Multi-Window: doesn't close previously opened websites!)
   const handleOpenWebsite = (website: WebsiteItem) => {
     const nowIso = new Date().toISOString();
@@ -125,6 +253,10 @@ export default function App() {
       timestamp: nowIso,
     };
     setAccessLogs((prev) => [newLog, ...prev.filter((l) => l.websiteId !== website.id).slice(0, 49)]);
+
+    // Supabase background sync
+    upsertWebsiteToSupabase({ ...website, lastAccessed: nowIso }).catch(() => {});
+    addAccessLogToSupabase(newLog).catch(() => {});
 
     // 3. Multi-Window Management
     setOpenWindows((prev) => {
@@ -333,15 +465,17 @@ export default function App() {
   ) => {
     if (websiteData.id) {
       // Editing existing website
+      const targetWebsite = websites.find((item) => item.id === websiteData.id);
+      const updatedItem: WebsiteItem = {
+        ...(targetWebsite || ({} as WebsiteItem)),
+        ...websiteData,
+        id: websiteData.id,
+        createdAt: targetWebsite?.createdAt || new Date().toISOString(),
+        lastAccessed: targetWebsite?.lastAccessed || null,
+      };
+
       setWebsites((prev) =>
-        prev.map((item) =>
-          item.id === websiteData.id
-            ? {
-                ...item,
-                ...websiteData,
-              }
-            : item
-        )
+        prev.map((item) => (item.id === websiteData.id ? updatedItem : item))
       );
       // Also update open window instance if any
       setOpenWindows((prev) =>
@@ -351,6 +485,7 @@ export default function App() {
             : w
         )
       );
+      upsertWebsiteToSupabase(updatedItem).catch(() => {});
       showToast(`Website "${websiteData.name}" berhasil diperbarui!`, 'success');
     } else {
       // Adding new website
@@ -361,6 +496,7 @@ export default function App() {
         lastAccessed: null,
       };
       setWebsites((prev) => [newWebsite, ...prev]);
+      upsertWebsiteToSupabase(newWebsite).catch(() => {});
       showToast(`Website "${newWebsite.name}" berhasil ditambahkan ke katalog!`, 'success');
     }
     setEditingWebsite(null);
@@ -397,6 +533,7 @@ export default function App() {
       if (detailWebsite && detailWebsite.id === id) {
         setDetailWebsite(null);
       }
+      deleteWebsiteFromSupabase(id).catch(() => {});
       showToast(`Website "${targetName}" berhasil dihapus.`, 'success');
     }
   };
@@ -501,6 +638,8 @@ export default function App() {
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         branding={branding}
         isMultiWindowActive={isMultiWindowActive}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+        supabaseStatus={supabaseStatus}
       />
 
       {/* 2. MAIN CONTENT AREA */}
@@ -518,12 +657,35 @@ export default function App() {
             setEditingWebsite(null);
             setIsAddModalOpen(true);
           }}
+          onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+          supabaseStatus={supabaseStatus}
           currentTab={currentTab}
           totalDatabases={websites.length}
           favoriteCount={favoriteCount}
           isAuthenticated={isAuthenticated}
           branding={branding}
         />
+
+        {/* BANNER STATUS SINKRONISASI JIKA TABEL BELUM DIBUAT ATAU OFFLINE */}
+        {supabaseStatus.isConnected && !supabaseStatus.tableExists && (
+          <div
+            id="sync-table-warning-banner"
+            className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs"
+          >
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <span>
+                <strong>Perhatian:</strong> Tabel cloud di Supabase belum dibuat. Data masih tersimpan di memori browser perangkat ini saja dan belum tersinkron ke perangkat lain (HP / Laptop).
+              </span>
+            </div>
+            <button
+              onClick={() => setIsSupabaseModalOpen(true)}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition-colors shrink-0 cursor-pointer shadow-2xs"
+            >
+              Aktifkan Sinkronisasi
+            </button>
+          </div>
+        )}
 
         {/* VIEW CONTAINER */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -780,6 +942,20 @@ export default function App() {
           setIsAuthenticated(true);
           showToast(`Berhasil masuk sebagai ${user.name} (${user.role})!`, 'success');
         }}
+      />
+
+      {/* Supabase Cloud & SQL Modal */}
+      <SupabaseModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        websites={websites}
+        accessLogs={accessLogs}
+        onWebsitesSynced={setWebsites}
+        onLogsSynced={setAccessLogs}
+        supabaseStatus={supabaseStatus}
+        onRefreshStatus={handleRefreshSupabaseStatus}
+        onSyncAllToSupabase={handleSyncAllToSupabase}
+        onFetchAllFromSupabase={handleFetchAllFromSupabase}
       />
     </div>
   );

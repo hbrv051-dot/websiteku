@@ -33,6 +33,11 @@ interface SidebarProps {
   onOpenLoginModal?: () => void;
   branding?: AppBrandingSettings;
   isMultiWindowActive?: boolean;
+  onOpenSupabaseModal?: () => void;
+  supabaseStatus?: {
+    isConnected: boolean;
+    tableExists: boolean;
+  };
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLoginModal,
   branding,
   isMultiWindowActive = false,
+  onOpenSupabaseModal,
+  supabaseStatus,
 }) => {
   const navItems: {
     id: NavigationTab;
@@ -226,6 +233,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          {/* Supabase Cloud Connection & SQL Schema Shortcut */}
+          {onOpenSupabaseModal && (
+            <div className="pt-2">
+              <button
+                id="sidebar-supabase-btn"
+                onClick={() => {
+                  onOpenSupabaseModal();
+                  onClose();
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 transition-all cursor-pointer shadow-xs group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Database className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <span>Koneksi Supabase & SQL</span>
+                </div>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    supabaseStatus?.isConnected && supabaseStatus?.tableExists
+                      ? 'bg-emerald-400 animate-pulse'
+                      : supabaseStatus?.isConnected
+                      ? 'bg-amber-400'
+                      : 'bg-slate-400'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Bottom Quick Info & Logout */}
