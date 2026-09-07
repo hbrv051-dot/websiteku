@@ -48,7 +48,7 @@ import { ProfileView } from './views/ProfileView';
 import { AboutView } from './views/AboutView';
 import { showToast, showConfirmDialog } from './utils/alerts';
 import { checkWebsitePing, checkAllWebsitesPing } from './utils/ping';
-import { openMiniKioskPopup } from './utils/helpers';
+import { openMiniKioskPopup, normalizeUrl } from './utils/helpers';
 import { SupabaseModal } from './components/SupabaseModal';
 import {
   testSupabaseConnection,
@@ -231,8 +231,16 @@ export default function App() {
     }
   };
 
-  // Handler: Open Website (Supports Multi-Window: doesn't close previously opened websites!)
-  const handleOpenWebsite = (website: WebsiteItem) => {
+  // Handler: Open Website (Updates access metrics, Supabase sync, and logs access history)
+  const handleOpenWebsite = (website: WebsiteItem, shouldTriggerWindowOpen = false) => {
+    if (shouldTriggerWindowOpen && typeof window !== 'undefined') {
+      try {
+        window.open(normalizeUrl(website.url), '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('Window open suppressed:', err);
+      }
+    }
+
     const nowIso = new Date().toISOString();
 
     // 1. Update lastAccessed in website list
@@ -259,11 +267,38 @@ export default function App() {
     upsertWebsiteToSupabase({ ...website, lastAccessed: nowIso }).catch(() => {});
     addAccessLogToSupabase(newLog).catch(() => {});
 
-    // 3. Multi-Window Management
+    showToast(`Membuka website "${website.name}"`, 'info');
+  };
+
+  // Dedicated Handler: Open Website in Multi-Window Floating Workspace
+  const handleOpenMultiWindow = (website: WebsiteItem) => {
+    const nowIso = new Date().toISOString();
+
+    setWebsites((prev) =>
+      prev.map((item) =>
+        item.id === website.id ? { ...item, lastAccessed: nowIso } : item
+      )
+    );
+
+    const newLog: AccessLog = {
+      id: `log-${Date.now()}`,
+      websiteId: website.id,
+      websiteName: website.name,
+      websiteUrl: website.url,
+      thumbnail: website.thumbnail,
+      email: website.email,
+      category: website.category,
+      timestamp: nowIso,
+    };
+    setAccessLogs((prev) => [newLog, ...prev.filter((l) => l.websiteId !== website.id).slice(0, 49)]);
+
+    upsertWebsiteToSupabase({ ...website, lastAccessed: nowIso }).catch(() => {});
+    addAccessLogToSupabase(newLog).catch(() => {});
+
+    // Multi-Window Management
     setOpenWindows((prev) => {
       const existingWin = prev.find((w) => w.websiteId === website.id);
       if (existingWin) {
-        // Bring to front & un-minimize
         return prev.map((w) =>
           w.id === existingWin.id
             ? { ...w, isMinimized: false, zIndex: Date.now() }
@@ -271,7 +306,6 @@ export default function App() {
         );
       }
 
-      // Add new floating window
       const newWin: OpenWindowItem = {
         id: `win-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         websiteId: website.id,

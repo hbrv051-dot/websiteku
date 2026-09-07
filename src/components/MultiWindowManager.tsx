@@ -123,28 +123,28 @@ export const MultiWindowManager: React.FC<MultiWindowManagerProps> = ({
     <>
       {/* 1. MULTI-WINDOW CONTAINER AREA */}
       <div
-        className={`fixed inset-0 z-40 transition-colors duration-200 pointer-events-none flex flex-col justify-between overflow-hidden ${
+        className={`fixed inset-0 z-40 transition-colors duration-200 pointer-events-none flex flex-col justify-between overflow-hidden w-full max-w-full ${
           allMinimized ? 'bg-transparent' : 'bg-slate-950/60 backdrop-blur-xs'
         }`}
       >
         {/* Workspace Canvas (where windows live) */}
         <div
-          className={`relative flex-1 w-full h-full p-2 sm:p-4 pb-20 overflow-hidden ${
+          className={`relative flex-1 w-full max-w-full h-full p-2 sm:p-4 pb-20 overflow-hidden ${
             allMinimized ? 'pointer-events-none' : 'pointer-events-auto'
           }`}
         >
           {/* Subtle floating banner when all windows are minimized */}
           {allMinimized && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700 text-slate-200 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-bottom-4 duration-200">
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <span className="font-medium text-slate-300">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700 text-slate-200 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[90vw]">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+              <span className="font-medium text-slate-300 truncate">
                 {windows.length} jendela website aktif di dock bawah
               </span>
               <button
                 onClick={() => {
                   if (onRestoreAllWindows) onRestoreAllWindows();
                 }}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-[11px] transition-colors shadow-sm cursor-pointer"
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-[11px] transition-colors shadow-sm cursor-pointer shrink-0"
               >
                 Tampilkan Semua
               </button>
@@ -153,7 +153,7 @@ export const MultiWindowManager: React.FC<MultiWindowManagerProps> = ({
           {/* LAYOUT: SPLIT / GRID TILED MODE */}
           {layout !== 'floating' && !anyMaximized && (
             <div
-              className={`w-full h-full gap-3 grid ${
+              className={`w-full max-w-full h-full gap-3 grid ${
                 layout === 'split-2'
                   ? visibleWindows.length >= 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
                   : layout === 'split-3'
@@ -190,12 +190,12 @@ export const MultiWindowManager: React.FC<MultiWindowManagerProps> = ({
 
           {/* LAYOUT: FLOATING OR SINGLE MAXIMIZED MODE */}
           {(layout === 'floating' || anyMaximized) && (
-            <div className="w-full h-full relative">
+            <div className="w-full max-w-full h-full relative overflow-hidden">
               {visibleWindows.map((win, idx) => {
                 const isMax = win.isMaximized;
                 // Cascading default offset if floating
-                const offsetX = isMax ? 0 : 20 + (idx % 6) * 30;
-                const offsetY = isMax ? 0 : 15 + (idx % 6) * 30;
+                const offsetX = isMax ? 0 : Math.min(10 + (idx % 4) * 15, 45);
+                const offsetY = isMax ? 0 : Math.min(10 + (idx % 4) * 15, 45);
 
                 return (
                   <div
@@ -205,12 +205,12 @@ export const MultiWindowManager: React.FC<MultiWindowManagerProps> = ({
                       zIndex: win.zIndex,
                       top: isMax ? '0' : `${offsetY}px`,
                       left: isMax ? '0' : `${offsetX}px`,
-                      width: isMax ? '100%' : 'calc(100% - 60px)',
-                      height: isMax ? '100%' : 'calc(100% - 40px)',
+                      width: isMax ? '100%' : `calc(100% - ${offsetX * 2}px)`,
+                      height: isMax ? '100%' : `calc(100% - ${offsetY * 2}px)`,
                       maxWidth: isMax ? '100%' : '1200px',
                       maxHeight: isMax ? '100%' : '900px',
                     }}
-                    className={`absolute transition-all duration-150 ${
+                    className={`absolute transition-all duration-150 max-w-full ${
                       isMax ? 'inset-0' : 'rounded-2xl shadow-2xl'
                     }`}
                   >
@@ -243,9 +243,9 @@ export const MultiWindowManager: React.FC<MultiWindowManagerProps> = ({
         </div>
 
         {/* 2. BOTTOM MULTI-WINDOW DOCK / TASKBAR */}
-        <div className="pointer-events-auto fixed bottom-0 inset-x-0 z-50 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-3 py-2 flex items-center justify-between gap-2 sm:gap-3 text-white shadow-2xl">
+        <div className="pointer-events-auto fixed bottom-0 inset-x-0 z-50 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-2 sm:px-3 py-2 flex items-center justify-between gap-1.5 sm:gap-3 text-white shadow-2xl w-full max-w-full overflow-hidden">
           {/* Left: App Menu Launcher, Minimize/Restore All & Window Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-[65vw] sm:max-w-[70vw]">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 max-w-[55vw] sm:max-w-[70vw] min-w-0">
             {/* Quick App Navigation Drawer / Popover */}
             <div className="relative shrink-0">
               <button

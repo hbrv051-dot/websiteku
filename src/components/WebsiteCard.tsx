@@ -18,11 +18,12 @@ import {
   Zap,
   Clock,
   AlertTriangle,
+  Layers,
 } from 'lucide-react';
 import { WebsiteItem } from '../types';
 import { ThumbnailPreview } from './ThumbnailPreview';
 import { CATEGORIES_CONFIG } from '../data/initialData';
-import { getInactivityCountdown, openMiniKioskPopup } from '../utils/helpers';
+import { getInactivityCountdown, openMiniKioskPopup, normalizeUrl } from '../utils/helpers';
 import { showToast } from '../utils/alerts';
 
 interface WebsiteCardProps {
@@ -34,6 +35,7 @@ interface WebsiteCardProps {
   onDuplicate: (website: WebsiteItem) => void;
   onDelete: (id: string) => void;
   onOpenKiosk?: (website: WebsiteItem) => void;
+  onOpenMultiWindow?: (website: WebsiteItem) => void;
   onPing?: (website: WebsiteItem) => void;
   onWake?: (id: string) => void;
 }
@@ -47,6 +49,7 @@ export const WebsiteCard: React.FC<WebsiteCardProps> = ({
   onDuplicate,
   onDelete,
   onOpenKiosk,
+  onOpenMultiWindow,
   onPing,
   onWake,
 }) => {
@@ -391,20 +394,24 @@ export const WebsiteCard: React.FC<WebsiteCardProps> = ({
 
         {/* CARD FOOTER: ACTION BUTTONS */}
         <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-          {/* Primary "Buka Website" Button (Multi-Window) */}
-          <button
+          {/* Primary "Buka Website" Button (Direct Link) */}
+          <a
             id={`open-btn-${website.id}`}
+            href={normalizeUrl(website.url)}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={() => onOpen(website)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer text-center no-underline select-none"
+            title={`Buka website tertaut: ${website.url}`}
           >
             <span>Buka Website</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+          </a>
 
           {/* Mini Kiosk Popup Shortcut Button */}
           <button
             onClick={handleKioskPopup}
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-amber-600 hover:bg-amber-50/60 hover:border-amber-300 transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:text-amber-600 hover:bg-amber-50/60 hover:border-amber-300 transition-colors cursor-pointer shrink-0"
             title="Mode Jendela Popup Mandiri (Desktop Mini Kiosk)"
             aria-label="Mode Popup Mandiri"
           >
@@ -412,14 +419,14 @@ export const WebsiteCard: React.FC<WebsiteCardProps> = ({
           </button>
 
           {/* Menu Button ⋮ */}
-          <div className="relative" ref={menuRef}>
+          <div className="relative shrink-0" ref={menuRef}>
             <button
               id={`menu-btn-${website.id}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-blue-50/50 hover:border-blue-200 transition-colors"
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-blue-50/50 hover:border-blue-200 transition-colors cursor-pointer"
               title="Menu opsi lainnya"
               aria-label="Menu Opsi"
             >
@@ -428,7 +435,7 @@ export const WebsiteCard: React.FC<WebsiteCardProps> = ({
 
             {/* Dropdown Menu Popup */}
             {showMenu && (
-              <div className="absolute right-0 bottom-full mb-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 text-xs font-medium text-slate-700 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 text-xs font-medium text-slate-700 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   onClick={() => {
                     setShowMenu(false);
@@ -439,6 +446,19 @@ export const WebsiteCard: React.FC<WebsiteCardProps> = ({
                   <Eye className="w-4 h-4 text-slate-400" />
                   <span>Lihat Detail & Sandi</span>
                 </button>
+
+                {onOpenMultiWindow && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      onOpenMultiWindow(website);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-colors text-left"
+                  >
+                    <Layers className="w-4 h-4 text-blue-500" />
+                    <span>Buka di Multi-Window</span>
+                  </button>
+                )}
 
                 <button
                   onClick={(e) => {

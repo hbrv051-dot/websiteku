@@ -20,7 +20,7 @@ import {
 import { WebsiteItem } from '../types';
 import { ThumbnailPreview } from './ThumbnailPreview';
 import { CATEGORIES_CONFIG } from '../data/initialData';
-import { formatIndonesianDateTime, getInactivityCountdown, openMiniKioskPopup } from '../utils/helpers';
+import { formatIndonesianDateTime, getInactivityCountdown, openMiniKioskPopup, normalizeUrl } from '../utils/helpers';
 import { showToast } from '../utils/alerts';
 
 interface WebsiteListRowProps {
@@ -280,13 +280,17 @@ export const WebsiteListRow: React.FC<WebsiteListRowProps> = ({
           <Trash2 className="w-4 h-4" />
         </button>
 
-        <button
+        <a
+          href={normalizeUrl(website.url)}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={() => onOpen(website)}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors ml-1 cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors ml-1 cursor-pointer no-underline"
+          title={`Buka website tertaut: ${website.url}`}
         >
           <span>Buka</span>
           <ExternalLink className="w-3 h-3" />
-        </button>
+        </a>
       </div>
     </div>
   );

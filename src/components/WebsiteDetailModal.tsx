@@ -30,7 +30,7 @@ import {
 import { WebsiteItem } from '../types';
 import { ThumbnailPreview } from './ThumbnailPreview';
 import { CATEGORIES_CONFIG } from '../data/initialData';
-import { formatIndonesianDateTime, formatSimpleDate, getInactivityCountdown, openMiniKioskPopup } from '../utils/helpers';
+import { formatIndonesianDateTime, formatSimpleDate, getInactivityCountdown, openMiniKioskPopup, normalizeUrl } from '../utils/helpers';
 import { showToast } from '../utils/alerts';
 import { isVaultUnlocked } from '../utils/vault';
 import { MasterPinModal } from './MasterPinModal';
@@ -188,17 +188,20 @@ export const WebsiteDetailModal: React.FC<WebsiteDetailModalProps> = ({
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
             {/* Quick Access Action Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
+              <a
+                href={normalizeUrl(website.url)}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => {
                   onOpenWebsite(website);
                   onClose();
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/25 transition-all cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/25 transition-all cursor-pointer text-center no-underline"
               >
                 <Globe className="w-4 h-4" />
                 <span>Buka Website Sekarang</span>
                 <ExternalLink className="w-4 h-4 ml-1" />
-              </button>
+              </a>
 
               <div className="flex items-center gap-2">
                 <button

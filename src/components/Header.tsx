@@ -37,10 +37,10 @@ export const Header: React.FC<HeaderProps> = ({
   branding,
 }) => {
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3.5 shadow-xs">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-4 lg:px-8 py-3.5 shadow-xs w-full max-w-full overflow-x-hidden">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 w-full max-w-full">
         {/* Left Section: Mobile menu button & Title indicator on smaller devices */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             id="mobile-menu-toggle"
             onClick={onToggleSidebar}
@@ -58,14 +58,14 @@ export const Header: React.FC<HeaderProps> = ({
               size="sm"
               variant="light"
             />
-            <span className="font-extrabold text-sm text-slate-800 tracking-tight truncate max-w-[120px]">
+            <span className="font-extrabold text-sm text-slate-800 tracking-tight truncate max-w-[100px] xs:max-w-[120px]">
               {branding?.appName || 'MY WEBSITE'}
             </span>
           </div>
         </div>
 
         {/* Center Section: Big Real-time Search Bar */}
-        <div className="flex-1 max-w-2xl mx-auto">
+        <div className="flex-1 max-w-2xl mx-auto min-w-0">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4 text-blue-500" />
@@ -92,14 +92,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Section: Supabase Status + Add Website Button + Admin Avatar */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Supabase Status Pill */}
           {onOpenSupabaseModal && (
             <button
               id="header-supabase-btn"
               onClick={onOpenSupabaseModal}
               title="Kelola Koneksi Supabase & Salin SQL Schema"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-sm"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-sm shrink-0"
               style={{
                 backgroundColor:
                   supabaseStatus?.isConnected && supabaseStatus?.tableExists
@@ -121,10 +121,10 @@ export const Header: React.FC<HeaderProps> = ({
                     : '#475569',
               }}
             >
-              <Database className="w-3.5 h-3.5 text-emerald-600" />
+              <Database className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span className="hidden sm:inline">Supabase</span>
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full shrink-0 ${
                   supabaseStatus?.isConnected && supabaseStatus?.tableExists
                     ? 'bg-emerald-500 animate-pulse'
                     : supabaseStatus?.isConnected
@@ -138,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="add-website-button"
             onClick={onOpenAddModal}
-            className="flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-600/25 transition-all duration-150 transform active:scale-95 whitespace-nowrap cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-600/25 transition-all duration-150 transform active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span className="hidden xs:inline sm:inline">+ Tambah Website</span>

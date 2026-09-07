@@ -146,14 +146,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Container */}
       <aside
         id="app-sidebar"
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 flex flex-col justify-between bg-gradient-to-b from-blue-900 via-indigo-950 to-slate-950 text-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] flex flex-col justify-between bg-gradient-to-b from-blue-900 via-indigo-950 to-slate-950 text-white shadow-2xl transition-all duration-300 ease-in-out ${
           isMultiWindowActive
             ? isOpen
-              ? 'translate-x-0'
-              : '-translate-x-full'
+              ? 'translate-x-0 opacity-100 pointer-events-auto visible'
+              : '-translate-x-full opacity-0 pointer-events-none invisible'
             : isOpen
-            ? 'translate-x-0'
-            : '-translate-x-full lg:translate-x-0'
+            ? 'translate-x-0 opacity-100 pointer-events-auto visible'
+            : '-translate-x-full opacity-0 pointer-events-none invisible lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto lg:visible'
         }`}
       >
         {/* Top Header Section */}
