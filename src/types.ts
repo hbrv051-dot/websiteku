@@ -83,6 +83,12 @@ export interface UserProfile {
   lastLogin?: string;
 }
 
+export interface AdminLoginCredentials {
+  username: string; // Default: 'admin'
+  password: string; // Default: 'admin123'
+  updatedAt?: string;
+}
+
 export type LoginSoundPreset = 
   | 'jarvis' 
   | 'futuristic_chime' 

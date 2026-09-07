@@ -1,10 +1,71 @@
-import { WebsiteItem, AccessLog, AudioSettings, AppBrandingSettings } from '../types';
+import { WebsiteItem, AccessLog, AudioSettings, AppBrandingSettings, AdminLoginCredentials } from '../types';
 import { INITIAL_WEBSITES, INITIAL_ACCESS_LOGS } from '../data/initialData';
 
 const WEBSITES_KEY = 'my_website_catalog_v1';
 const ACCESS_LOGS_KEY = 'my_website_access_logs_v1';
 const AUDIO_SETTINGS_KEY = 'my_website_audio_settings_v1';
 const BRANDING_SETTINGS_KEY = 'my_website_branding_settings_v1';
+const ADMIN_CREDENTIALS_KEY = 'my_website_admin_credentials_v1';
+
+export const DEFAULT_ADMIN_CREDENTIALS: AdminLoginCredentials = {
+  username: 'admin',
+  password: 'admin123',
+  updatedAt: new Date().toISOString(),
+};
+
+export function loadAdminCredentials(): AdminLoginCredentials {
+  try {
+    const raw = localStorage.getItem(ADMIN_CREDENTIALS_KEY);
+    if (!raw) {
+      localStorage.setItem(ADMIN_CREDENTIALS_KEY, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
+      return DEFAULT_ADMIN_CREDENTIALS;
+    }
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_ADMIN_CREDENTIALS, ...parsed };
+  } catch (err) {
+    console.error('Failed to load admin credentials:', err);
+    return DEFAULT_ADMIN_CREDENTIALS;
+  }
+}
+
+export function saveAdminCredentials(creds: AdminLoginCredentials): void {
+  try {
+    localStorage.setItem(ADMIN_CREDENTIALS_KEY, JSON.stringify(creds));
+  } catch (err) {
+    console.error('Failed to save admin credentials:', err);
+  }
+}
+
+export function resetAdminCredentials(): AdminLoginCredentials {
+  const resetCreds: AdminLoginCredentials = {
+    ...DEFAULT_ADMIN_CREDENTIALS,
+    updatedAt: new Date().toISOString(),
+  };
+  saveAdminCredentials(resetCreds);
+  return resetCreds;
+}
+
+export function validateAdminLogin(
+  userInput: string,
+  passInput: string,
+  adminEmail?: string
+): { isValid: boolean; message?: string } {
+  const creds = loadAdminCredentials();
+  const trimmedUser = userInput.trim().toLowerCase();
+  const validUsername = creds.username.trim().toLowerCase();
+  const validEmail = (adminEmail || 'admin@mustofa.id').trim().toLowerCase();
+
+  const isUserMatch = trimmedUser === validUsername || trimmedUser === validEmail;
+  const isPassMatch = passInput.trim() === creds.password.trim();
+
+  if (!isUserMatch) {
+    return { isValid: false, message: 'Username atau email administrator tidak ditemukan.' };
+  }
+  if (!isPassMatch) {
+    return { isValid: false, message: 'Kata sandi salah. Silakan periksa kembali kata sandi Anda.' };
+  }
+  return { isValid: true };
+}
 
 export const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   enabled: true,

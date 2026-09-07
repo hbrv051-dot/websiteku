@@ -14,6 +14,7 @@ import {
 import { playLoginSound } from '../utils/sound';
 import { AppBrandingSettings, AudioSettings } from '../types';
 import { BrandLogo } from './BrandLogo';
+import { validateAdminLogin } from '../utils/storage';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -54,6 +55,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg('');
 
     setTimeout(() => {
+      // Validate credentials against stored admin credentials
+      const validation = validateAdminLogin(username, password, branding?.adminEmail);
+      if (!validation.isValid) {
+        setIsLoading(false);
+        setErrorMsg(validation.message || 'Username atau kata sandi salah.');
+        return;
+      }
+
       setIsLoading(false);
 
       // Play configured login sound
@@ -69,7 +78,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         role: 'Super Administrator',
       });
       onClose();
-    }, 600);
+    }, 500);
   };
 
   return (

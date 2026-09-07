@@ -21,11 +21,25 @@ import {
   AlertCircle,
   Headphones,
   Key,
+  KeyRound,
+  Lock,
+  Eye,
+  EyeOff,
+  Shield,
+  Check,
+  Info,
 } from 'lucide-react';
-import { AudioSettings, AppBrandingSettings, LoginSoundPreset, UserProfile } from '../types';
+import { AudioSettings, AppBrandingSettings, LoginSoundPreset, UserProfile, AdminLoginCredentials } from '../types';
 import { showToast, showSuccess, showError, showConfirmDialog } from '../utils/alerts';
 import { playLoginSound, stopAllAudio, playCustomUploadedAudio, playSpeechGreeting } from '../utils/sound';
-import { DEFAULT_AUDIO_SETTINGS, DEFAULT_BRANDING_SETTINGS } from '../utils/storage';
+import {
+  DEFAULT_AUDIO_SETTINGS,
+  DEFAULT_BRANDING_SETTINGS,
+  DEFAULT_ADMIN_CREDENTIALS,
+  loadAdminCredentials,
+  saveAdminCredentials,
+  resetAdminCredentials,
+} from '../utils/storage';
 import { BrandLogo } from '../components/BrandLogo';
 
 interface ProfileViewProps {
@@ -45,7 +59,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   currentUser,
   onUpdateCurrentUser,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'branding' | 'audio'>('audio');
+  const [activeTab, setActiveTab] = useState<'login' | 'profile' | 'branding' | 'audio'>('login');
+
+  // Login Credentials State
+  const [credentials, setCredentials] = useState<AdminLoginCredentials>(() => loadAdminCredentials());
+  const [usernameInput, setUsernameInput] = useState(credentials.username);
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Profile Form State
   const [adminName, setAdminName] = useState(branding.adminName || 'Mustofa');
@@ -271,6 +295,93 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
+  // 10. Save Login Settings (Username and Password)
+  const handleSaveLoginSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmedUsername = usernameInput.trim();
+    if (!trimmedUsername) {
+      showError('Username Kosong', 'Silakan masukkan username administrator yang valid.');
+      return;
+    }
+
+    if (trimmedUsername.length < 3) {
+      showError('Username Terlalu Pendek', 'Username minimal harus 3 karakter.');
+      return;
+    }
+
+    // Always verify current password before saving changes
+    if (!currentPasswordInput) {
+      showError(
+        'Verifikasi Diperlukan',
+        'Silakan masukkan kata sandi saat ini untuk memverifikasi perubahan kredensial.'
+      );
+      return;
+    }
+
+    if (currentPasswordInput !== credentials.password) {
+      showError(
+        'Kata Sandi Saat Ini Salah',
+        'Kata sandi administrator saat ini yang Anda masukkan tidak sesuai.'
+      );
+      return;
+    }
+
+    // If new password is provided, validate it
+    if (newPasswordInput) {
+      if (newPasswordInput.length < 6) {
+        showError('Kata Sandi Lemah', 'Kata sandi baru minimal harus 6 karakter.');
+        return;
+      }
+      if (newPasswordInput !== confirmPasswordInput) {
+        showError('Konfirmasi Tidak Cocok', 'Konfirmasi kata sandi baru tidak sama dengan kata sandi baru.');
+        return;
+      }
+    }
+
+    const finalPassword = newPasswordInput ? newPasswordInput : credentials.password;
+
+    const updated: AdminLoginCredentials = {
+      username: trimmedUsername,
+      password: finalPassword,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveAdminCredentials(updated);
+    setCredentials(updated);
+    setCurrentPasswordInput('');
+    setNewPasswordInput('');
+    setConfirmPasswordInput('');
+
+    showSuccess(
+      'Kredensial Login Berhasil Disimpan',
+      `Username aktif: ${updated.username}${newPasswordInput ? '\nKata sandi baru telah diperbarui dan siap digunakan.' : ''}`
+    );
+  };
+
+  // 11. Reset Login Credentials to Default (admin / admin123)
+  const handleResetLoginSettings = async () => {
+    const confirmed = await showConfirmDialog({
+      title: 'Reset Kredensial Login?',
+      text: 'Username akan dikembalikan ke "admin" dan kata sandi ke "admin123". Anda dapat menggunakannya untuk login sistem.',
+      confirmButtonText: 'Ya, Reset Kredensial',
+      icon: 'warning',
+    });
+
+    if (confirmed) {
+      const reset = resetAdminCredentials();
+      setCredentials(reset);
+      setUsernameInput(reset.username);
+      setCurrentPasswordInput('');
+      setNewPasswordInput('');
+      setConfirmPasswordInput('');
+      showSuccess(
+        'Kredensial Login Direset',
+        'Username: admin\nKata Sandi: admin123\nSilakan gunakan kredensial bawaan ini saat masuk.'
+      );
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 max-w-5xl mx-auto">
       {/* Header Banner */}
@@ -306,18 +417,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 p-1.5 bg-slate-200/60 rounded-2xl border border-slate-200 overflow-x-auto">
         <button
-          onClick={() => setActiveTab('audio')}
+          onClick={() => setActiveTab('login')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'audio'
+            activeTab === 'login'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
           }`}
         >
-          <Headphones className="w-4 h-4" />
-          <span>Pengaturan Audio Login</span>
-          {audioEnabled && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ml-1" />
-          )}
+          <KeyRound className="w-4 h-4" />
+          <span>Pengaturan Login</span>
+          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-mono">
+            Admin
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'profile'
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>Profil Pengelola</span>
         </button>
 
         <button
@@ -338,17 +461,266 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('profile')}
+          onClick={() => setActiveTab('audio')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'profile'
+            activeTab === 'audio'
               ? 'bg-white text-blue-700 shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
           }`}
         >
-          <User className="w-4 h-4" />
-          <span>Profil Pengelola</span>
+          <Headphones className="w-4 h-4" />
+          <span>Pengaturan Audio Login</span>
+          {audioEnabled && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 ml-1" />
+          )}
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* TAB: PENGATURAN LOGIN (CHANGE USERNAME, PASSWORD, AND RESET LOGIN)       */}
+      {/* ========================================================================= */}
+      {activeTab === 'login' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Status & Overview Bar */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div className="overflow-hidden">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Username Aktif
+                </span>
+                <span className="text-sm font-bold text-slate-800 font-mono truncate block">
+                  {credentials.username}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Status Proteksi
+                </span>
+                <span className="text-sm font-bold text-emerald-700">
+                  Tersimpan Aman
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="w-10 h-10 rounded-xl bg-amber-600/10 text-amber-600 flex items-center justify-center shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Kredensial Default
+                </span>
+                <span className="text-xs font-mono text-slate-700 font-bold">
+                  admin / admin123
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Form Ubah Username & Password */}
+            <div className="lg:col-span-2 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+              <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                    <KeyRound className="w-5 h-5 text-blue-600" />
+                    <span>Ubah Username & Kata Sandi</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Atur username dan kata sandi baru untuk akses administrator sistem
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveLoginSettings} className="space-y-5">
+                {/* Username Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Username Administrator
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                      placeholder="Masukkan username administrator"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-400 mt-1 block">
+                    Digunakan saat login di modal maupun di halaman utama login.
+                  </span>
+                </div>
+
+                {/* Current Password Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Kata Sandi Administrator Saat Ini <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPasswordInput}
+                      onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                      placeholder="Ketik kata sandi saat ini untuk verifikasi"
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-400 mt-1 block">
+                    Diperlukan untuk memvalidasi bahwa Anda adalah pemilik akses yang sah. (Bawaan awal: <code className="text-blue-600 font-mono font-bold">admin123</code>).
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div className="pt-2 border-t border-slate-100" />
+
+                {/* New Password & Confirm Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Kata Sandi Baru (Opsional)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Key className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPasswordInput}
+                        onChange={(e) => setNewPasswordInput(e.target.value)}
+                        placeholder="Kosongkan jika tidak diubah"
+                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Minimal 6 karakter kombinasi huruf & angka.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Konfirmasi Kata Sandi Baru
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Key className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPasswordInput}
+                        onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                        placeholder="Ulangi kata sandi baru"
+                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-600/25 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Perubahan Kredensial</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right Column: Reset Login Card & Instructions */}
+            <div className="space-y-6">
+              {/* Reset Login Box */}
+              <div className="bg-white p-6 rounded-3xl border border-red-200/80 shadow-xs space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      Reset Login Administrator
+                    </h3>
+                    <span className="text-[11px] text-red-600 font-semibold">
+                      Kembalikan ke Setelan Awal
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Jika Anda lupa kata sandi administrator atau ingin mengembalikan kredensial ke konfigurasi awal bawaan, Anda dapat menekan tombol reset di bawah ini.
+                </p>
+
+                <div className="p-3.5 bg-red-50/70 rounded-2xl border border-red-100 space-y-2 text-xs text-slate-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-sans">Username Default:</span>
+                    <span className="font-bold text-slate-900 font-mono bg-white px-2 py-0.5 rounded border border-red-200">admin</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-sans">Password Default:</span>
+                    <span className="font-bold text-slate-900 font-mono bg-white px-2 py-0.5 rounded border border-red-200">admin123</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetLoginSettings}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-red-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Reset Login ke Default</span>
+                </button>
+              </div>
+
+              {/* Security Hint */}
+              <div className="p-5 bg-blue-50/60 rounded-3xl border border-blue-100 space-y-2">
+                <div className="flex items-center gap-2 text-blue-800 font-bold text-xs">
+                  <Info className="w-4 h-4" />
+                  <span>Informasi Kredensial</span>
+                </div>
+                <p className="text-xs text-blue-900/80 leading-relaxed">
+                  Kredensial login Anda disimpan secara aman di peramban ini. Anda juga dapat login menggunakan email administrator resmi (<strong>{branding.adminEmail}</strong>).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: AUDIO SETTINGS */}

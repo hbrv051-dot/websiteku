@@ -16,6 +16,7 @@ import {
 import { playLoginSound } from '../utils/sound';
 import { AppBrandingSettings, AudioSettings } from '../types';
 import { BrandLogo } from '../components/BrandLogo';
+import { validateAdminLogin } from '../utils/storage';
 
 interface LoginPageViewProps {
   onBackToLanding: () => void;
@@ -53,6 +54,14 @@ export const LoginPageView: React.FC<LoginPageViewProps> = ({
 
     // Verification & Configured sound effect
     setTimeout(() => {
+      // Validate credentials against stored admin credentials
+      const validation = validateAdminLogin(username, password, branding?.adminEmail);
+      if (!validation.isValid) {
+        setIsLoading(false);
+        setErrorMsg(validation.message || 'Username atau kata sandi salah.');
+        return;
+      }
+
       setIsLoading(false);
       
       // Play configured login sound (preset / custom audio / jarvis / muted)
@@ -67,7 +76,7 @@ export const LoginPageView: React.FC<LoginPageViewProps> = ({
         email: emailValue,
         role: 'Super Administrator',
       });
-    }, 600);
+    }, 500);
   };
 
   return (
