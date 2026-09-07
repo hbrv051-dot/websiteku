@@ -33,6 +33,7 @@ import { WebsiteModal } from './components/WebsiteModal';
 import { WebsiteDetailModal } from './components/WebsiteDetailModal';
 import { MultiWindowManager } from './components/MultiWindowManager';
 import { LoginModal } from './components/LoginModal';
+import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { LandingPageView } from './views/LandingPageView';
 import { LoginPageView } from './views/LoginPageView';
 import { HomeView } from './views/HomeView';
@@ -592,6 +593,7 @@ export default function App() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
         />
+        <ScrollToTopButton />
       </div>
     );
   }
@@ -957,6 +959,9 @@ export default function App() {
         onSyncAllToSupabase={handleSyncAllToSupabase}
         onFetchAllFromSupabase={handleFetchAllFromSupabase}
       />
+
+      {/* Floating Scroll To Top Button */}
+      <ScrollToTopButton />
     </div>
   );
 }
